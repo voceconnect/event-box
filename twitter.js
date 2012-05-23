@@ -8,9 +8,9 @@ var Tweets = Backbone.Collection.extend({
 	fetch_newer: true,
 	url: function() {
 
-		url_base = 'http://search.twitter.com/search.json?q=' + encodeURIComponent(this.query);
+		var url_base = 'http://search.twitter.com/search.json?q=' + encodeURIComponent(this.query);
 
-		if (this.fetch_newer && this.since_id) {
+		if (this.fetch_newer) {
 			if (this.since_id) {
 				url_base += '&since_id=' + this.since_id;
 			}
@@ -42,7 +42,10 @@ var TweetsView = Backbone.View.extend({
 		this.collection.fetch({
 			success: function(tweets) {
 				var template_html = '<ul class="tweets"><% _.each(tweets, function(tweet){ %><li><%= tweet.get(\'created_at\') %> - <%= tweet.get(\'text\') %></li><% }); %></ul>';
-				$(self.el).append(_.template(template_html, {tweets: tweets.models}));
+				var rendered_template = _.template(template_html, {tweets: tweets.models});
+				var method = newer ? 'prependTo' : 'append';
+
+				$(self.el)[method](rendered_template);
 			}
 		})
 	}
@@ -54,7 +57,11 @@ $(document).ready(function($){
 
 	$('#older_tweets').click(function(){
 		tweetView.render(false);
-	})
+	});
+
+	$('#newer_tweets').click(function(){
+		tweetView.render();
+	});
 
 });
 
