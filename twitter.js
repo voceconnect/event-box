@@ -23,15 +23,44 @@ var Tweets = Backbone.Collection.extend({
 		return url_base + '&callback=?';
 	},
 	parse: function(resp, xhr) {
-		console.log(resp);
-		this.since_id = resp.max_id;
-		this.max_id = _.last(resp.results).id;
+
+		if ((0 == this.since_id) || (resp.max_id > this.since_id)) {
+			this.since_id = resp.max_id;
+		}
+
+		if (resp.results.length) {
+			var last_id = _.last(resp.results).id;
+			if ((0 == this.max_id) || (last_id < this.max_id)) {
+				this.max_id = last_id;
+			}
+		}
+
 		return resp.results;
+	},
+	add: function(models, options) {
+		var new_models = [];
+
+		_.each(models, function(model) {
+			if (model.id && _.isUndefined(this.get(model.id))) {
+				new_models.push(model);
+			}
+		}, this);
+
+		return Backbone.Collection.prototype.add.call(this, new_models, options);
+	},
+	comparator: function(a, b) {
+		if (a.id > b.id) {
+			return -1;
+		} else {
+			return 1;
+		}
+		return 0;
 	}
 });
 
 var TweetsView = Backbone.View.extend({
 	el: '#tweet_container',
+	tagName: 'li',
 	initialize: function(options) {
 		this.template_id = options.template_id;
 		this.collection = new Tweets(options);
@@ -40,12 +69,11 @@ var TweetsView = Backbone.View.extend({
 		var self = this;
 		this.collection.fetch_newer = (newer || _.isUndefined(newer));
 		this.collection.fetch({
+			add: true,
 			success: function(tweets) {
-				var template_html = '<ul class="tweets"><% _.each(tweets, function(tweet){ %><li><%= tweet.get(\'created_at\') %> - <%= tweet.get(\'text\') %></li><% }); %></ul>';
+				var template_html = '<% _.each(tweets, function(tweet){ %><li><%= tweet.get(\'created_at\') %> - <%= tweet.get(\'text\') %></li><% }); %>';
 				var rendered_template = _.template(template_html, {tweets: tweets.models});
-				var method = newer ? 'prependTo' : 'append';
-
-				$(self.el)[method](rendered_template);
+				$(self.el).html(rendered_template);
 			}
 		})
 	}
